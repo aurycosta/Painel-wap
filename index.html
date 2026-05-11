@@ -3,256 +3,235 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hub Operacional Cloud</title>
+    <title>Hub WAP Enterprise v3.1 - Session</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     
     <style>
-        :root {
-            --primary: #2c3e50;
-            --accent: #3498db;
-            --bg: #f4f7f6;
-            --card-bg: #ffffff;
-        }
+        :root { --primary: #2c3e50; --accent: #3498db; --bg: #f4f7f6; --danger: #e74c3c; --success: #27ae60; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; }
+        
+        /* Login Overlay */
+        #login-screen { position: fixed; inset: 0; background: var(--primary); z-index: 10000; display: none; justify-content: center; align-items: center; color: white; }
+        .login-box { text-align: center; background: rgba(255,255,255,0.1); padding: 40px; border-radius: 15px; width: 300px; }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
+        header { width: 100%; padding: 20px; background: var(--primary); color: white; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        
+        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; width: 90%; max-width: 1200px; margin: 40px auto; }
 
-        header {
-            width: 100%;
-            padding: 30px 0;
-            background: var(--primary);
-            color: white;
-            text-align: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            margin-bottom: 40px;
+        .card { 
+            background: white; border-radius: 12px; padding: 20px; text-align: center; text-decoration: none; color: #333;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; display: flex; flex-direction: column; align-items: center; transition: 0.3s;
         }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+        .card img { width: 65px; height: 65px; margin-bottom: 10px; object-fit: contain; }
+        
+        .btn-del-app { position: absolute; top: 5px; right: 5px; background: var(--danger); color: white; border: none; border-radius: 50%; width: 25px; height: 25px; cursor: pointer; display: none; font-weight: bold; }
 
-        .container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 25px;
-            width: 90%;
-            max-width: 1200px;
-        }
+        #admin-menu { position: fixed; top: 20px; right: 20px; z-index: 100; display: none; }
+        .admin-btn { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
 
-        .card {
-            background: var(--card-bg);
-            border-radius: 15px;
-            padding: 30px 20px;
-            text-align: center;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            text-decoration: none;
-            color: #333;
-            box-shadow: 0 6px 15px rgba(0,0,0,0.05);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            border: 1px solid #eee;
-            position: relative;
-        }
+        /* Modais */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 550px; max-height: 85vh; overflow-y: auto; }
+        
+        input, select { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        .perm-list { background: #f9f9f9; padding: 10px; border-radius: 5px; margin: 10px 0; border: 1px solid #eee; }
+        .perm-item { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 14px; }
+        .perm-item input { width: auto; margin: 0; }
 
-        .card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 12px 25px rgba(0,0,0,0.1);
-            border-color: var(--accent);
-        }
-
-        .card img {
-            width: 85px;
-            height: 85px;
-            margin-bottom: 20px;
-            object-fit: contain;
-        }
-
-        .card span {
-            font-weight: 700;
-            font-size: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* Botão Adicionar Flutuante */
-        #btn-add-trigger {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            width: 55px;
-            height: 55px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 28px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: 0.3s;
-            z-index: 10;
-        }
-
-        #btn-add-trigger:hover {
-            background: var(--accent);
-            transform: rotate(90deg);
-        }
-
-        /* Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 35px;
-            border-radius: 12px;
-            width: 350px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-        }
-
-        .modal-content h3 { margin-top: 0; color: var(--primary); }
-
-        input {
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        .btn-save {
-            background: #27ae60;
-            color: white;
-            border: none;
-            padding: 14px;
-            cursor: pointer;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 16px;
-        }
-
-        .btn-close {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            padding: 8px;
-            cursor: pointer;
-            border-radius: 6px;
-        }
+        .btn-add { background: var(--success); color: white; width: 100%; padding: 12px; margin-top: 10px; font-weight: bold; }
+        .logout-link { color: #bdc3c7; cursor: pointer; font-size: 12px; display: block; margin-top: 15px; }
     </style>
 </head>
 <body>
 
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>Acesso WAP</h2>
+            <input type="text" id="user-input" placeholder="USUÁRIO">
+            <button onclick="login()" class="admin-btn" style="width: 100%; margin-top: 10px;">ENTRAR</button>
+        </div>
+    </div>
+
+    <div id="admin-menu">
+        <button class="admin-btn" onclick="openAdminModal()">⚙️ PAINEL ADM</button>
+    </div>
+
     <header>
-        <h1>Sistemas WAP - Aury Costa</h1>
-        <p>Gerenciamento em Tempo Real</p>
+        <h1 id="welcome-title">Iniciando...</h1>
+        <span onclick="logout()" class="logout-link">Sair do usuário</span>
     </header>
 
-    <div class="container" id="app-grid">
-        </div>
+    <div class="container" id="app-grid"></div>
 
-    <button id="btn-add-trigger" title="Adicionar Novo WAP" onclick="openModal()">+</button>
-
-    <div class="modal" id="modal">
+    <div class="modal" id="admin-modal">
         <div class="modal-content">
-            <h3>Novo WAP</h3>
-            <input type="text" id="input-name" placeholder="Nome do Painel">
-            <input type="text" id="input-link" placeholder="Link (https://...)">
-            <input type="text" id="input-icon" placeholder="Link do Ícone (URL da imagem)">
-            <button class="btn-save" onclick="saveWap()">Cadastrar no Firebase</button>
-            <button class="btn-close" onclick="closeModal()">Cancelar</button>
+            <h2 style="color: var(--primary); margin-top: 0;">Configurações Avançadas</h2>
+            <div style="border-left: 4px solid var(--accent); padding-left: 15px;">
+                <h3>📦 Cadastrar Novo App</h3>
+                <input type="text" id="app-name" placeholder="Nome do App">
+                <input type="text" id="app-link" placeholder="URL do GitHub Pages">
+                <input type="file" id="app-file" accept="image/*">
+                <input type="text" id="app-icon-url" placeholder="Ou URL da imagem">
+                <button class="btn-add" onclick="saveApp()">SALVAR APP</button>
+            </div>
+            <hr style="margin: 25px 0;">
+            <div style="border-left: 4px solid var(--success); padding-left: 15px;">
+                <h3>👤 Gestão de Usuários</h3>
+                <input type="text" id="new-user-name" placeholder="NOME (Ex: N.BATISTA)">
+                <select id="user-role">
+                    <option value="user">Usuário Padrão</option>
+                    <option value="adm">Administrador</option>
+                </select>
+                <div id="app-permissions-list" class="perm-list"></div>
+                <button class="btn-add" onclick="saveUser()">SALVAR USUÁRIO</button>
+            </div>
+            <div id="user-manager-list" style="margin-top: 20px;"></div>
+            <button onclick="closeAdminModal()" style="background: #95a5a6; color: white; width: 100%; margin-top: 20px; padding: 10px;">FECHAR</button>
         </div>
     </div>
 
     <script>
-        // 1. CONFIGURAÇÃO DO SEU FIREBASE
-        const firebaseConfig = {
-            databaseURL: "https://painel-wap-default-rtdb.firebaseio.com/"
-        };
-        
+        const firebaseConfig = { databaseURL: "https://painel-wap-default-rtdb.firebaseio.com/" };
         firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        const wapsRef = database.ref('meus_waps');
+        const db = firebase.database();
 
-        // 2. WAPS PADRÃO (Caso o banco esteja vazio)
-        const initialWaps = [
-            { name: "Controle de Notas", link: "https://aury-costa.github.io/Controle-de-notas-pendentes/", icon: "https://cdn-icons-png.flaticon.com/512/10397/10397529.png" },
-            { name: "MGL / Quebra Diária", link: "https://aury-costa.github.io/MGL-regional/", icon: "https://cdn-icons-png.flaticon.com/512/4521/4521266.png" },
-            { name: "Inventário", link: "https://aury-costa.github.io/Inventario/", icon: "https://cdn-icons-png.flaticon.com/512/862/862837.png" },
-            { name: "Embalagens Inativas", link: "https://aury-costa.github.io/Embalagens-Inativas/", icon: "https://cdn-icons-png.flaticon.com/512/2514/2514540.png" }
-        ];
+        let currentUser = null;
+        let userData = null;
+        let allApps = {};
 
-        // 3. ESCUTAR MUDANÇAS EM TEMPO REAL
-        wapsRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            
-            if (!data) {
-                // Se o banco estiver vazio, ele cria os iniciais
-                setupInitialData();
+        // --- LÓGICA DE SESSÃO ---
+        window.onload = checkSession;
+
+        async function checkSession() {
+            const session = JSON.parse(localStorage.getItem('wap_session'));
+            const now = new Date().getTime();
+
+            // Verifica se existe sessão e se tem menos de 1 hora (3600000 ms)
+            if (session && (now - session.time < 3600000)) {
+                await performLogin(session.user);
             } else {
-                render(data);
+                document.getElementById('login-screen').style.display = 'flex';
+                document.getElementById('welcome-title').innerText = "Aguardando Login";
             }
-        });
-
-        function setupInitialData() {
-            initialWaps.forEach(wap => {
-                wapsRef.push(wap);
-            });
         }
 
-        function render(waps) {
-            const grid = document.getElementById('app-grid');
-            grid.innerHTML = '';
-            
-            Object.keys(waps).forEach(key => {
-                const wap = waps[key];
-                grid.innerHTML += `
-                    <a href="${wap.link}" class="card">
-                        <img src="${wap.icon}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1243/1243420.png'">
-                        <span>${wap.name}</span>
-                    </a>
-                `;
-            });
+        async function login() {
+            const userInp = document.getElementById('user-input').value.trim().toUpperCase().replace(/\./g, '_');
+            if (!userInp) return;
+            await performLogin(userInp);
         }
 
-        // 4. FUNÇÕES DE INTERAÇÃO
-        function saveWap() {
-            const name = document.getElementById('input-name').value;
-            const link = document.getElementById('input-link').value;
-            const icon = document.getElementById('input-icon').value;
+        async function performLogin(userId) {
+            const snap = await db.ref('usuarios/' + userId).once('value');
+            const data = snap.val();
 
-            if (name && link && icon) {
-                wapsRef.push({ name, link, icon })
-                .then(() => {
-                    closeModal();
-                    document.getElementById('input-name').value = '';
-                    document.getElementById('input-link').value = '';
-                    document.getElementById('input-icon').value = '';
+            if (data) {
+                currentUser = userId;
+                userData = data;
+                
+                // Salva sessão no computador
+                localStorage.setItem('wap_session', JSON.stringify({
+                    user: userId,
+                    time: new Date().getTime()
+                }));
+
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('welcome-title').innerText = `Sistemas - ${userId.replace(/_/g, '.')}`;
+                
+                if (data.role === 'adm') document.getElementById('admin-menu').style.display = 'block';
+                loadApps();
+            } else {
+                alert("Usuário não encontrado!");
+                logout();
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('wap_session');
+            location.reload();
+        }
+
+        // --- RESTANTE DAS FUNÇÕES (IGUAIS À V3.0) ---
+        function loadApps() {
+            db.ref('meus_waps').on('value', (snap) => {
+                allApps = snap.val() || {};
+                const grid = document.getElementById('app-grid');
+                grid.innerHTML = '';
+                Object.keys(allApps).forEach(id => {
+                    const app = allApps[id];
+                    const isAdmin = userData.role === 'adm';
+                    const hasPermission = isAdmin || (userData.allowedApps && userData.allowedApps[id]);
+                    if (hasPermission) {
+                        grid.innerHTML += `<div class="card">
+                            ${isAdmin ? `<button class="btn-del-app" style="display:block" onclick="deleteApp('${id}')">×</button>` : ''}
+                            <a href="${app.link}" style="text-decoration:none; color:inherit;">
+                                <img src="${app.icon}">
+                                <br><span>${app.name}</span>
+                            </a>
+                        </div>`;
+                    }
                 });
-            } else {
-                alert("Por favor, preencha todos os campos.");
-            }
+                renderPermissionList();
+            });
         }
 
-        function openModal() { document.getElementById('modal').style.display = 'flex'; }
-        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+        async function getBase64(file) {
+            return new Promise((r, j) => {
+                const rd = new FileReader(); rd.readAsDataURL(file);
+                rd.onload = () => r(rd.result); rd.onerror = e => j(e);
+            });
+        }
+
+        async function saveApp() {
+            const name = document.getElementById('app-name').value;
+            const link = document.getElementById('app-link').value;
+            const file = document.getElementById('app-file');
+            const url = document.getElementById('app-icon-url').value;
+            let icon = url || 'https://cdn-icons-png.flaticon.com/512/1243/1243420.png';
+            if (file.files.length > 0) icon = await getBase64(file.files[0]);
+            if (name && link) db.ref('meus_waps').push({ name, link, icon });
+        }
+
+        function renderPermissionList() {
+            const container = document.getElementById('app-permissions-list');
+            container.innerHTML = '';
+            Object.keys(allApps).forEach(id => {
+                container.innerHTML += `<div class="perm-item">
+                    <input type="checkbox" class="app-check" value="${id}">
+                    <label>${allApps[id].name}</label>
+                </div>`;
+            });
+        }
+
+        function saveUser() {
+            const name = document.getElementById('new-user-name').value.trim().toUpperCase().replace(/\./g, '_');
+            const role = document.getElementById('user-role').value;
+            const selected = {};
+            document.querySelectorAll('.app-check:checked').forEach(el => selected[el.value] = true);
+            if (name) db.ref('usuarios/' + name).set({ role, allowedApps: selected }).then(loadUserList);
+        }
+
+        function loadUserList() {
+            db.ref('usuarios').once('value', s => {
+                const list = document.getElementById('user-manager-list');
+                const users = s.val();
+                list.innerHTML = '<h4>Usuários:</h4>';
+                if(users) Object.keys(users).forEach(u => {
+                    list.innerHTML += `<div class="user-list-item"><span>${u.replace(/_/g,'.')}</span>
+                    <button onclick="deleteUser('${u}')" style="background:red; color:white;">Remover</button></div>`;
+                });
+            });
+        }
+
+        function deleteApp(id) { if (confirm("Excluir?")) db.ref('meus_waps/' + id).remove(); }
+        function deleteUser(id) { if (confirm("Remover?")) db.ref('usuarios/' + id).remove().then(loadUserList); }
+        function openAdminModal() { document.getElementById('admin-modal').style.display = 'flex'; loadUserList(); }
+        function closeAdminModal() { document.getElementById('admin-modal').style.display = 'none'; }
+
+        // Master User
+        db.ref('usuarios/AU_COSTA').once('value', s => { if(!s.exists()) db.ref('usuarios/AU_COSTA').set({ role: 'adm' }); });
     </script>
 </body>
 </html>
