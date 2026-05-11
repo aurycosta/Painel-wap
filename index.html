@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hub Operacional Cloud</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --bg: #f4f7f6;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            width: 100%;
+            padding: 30px 0;
+            background: var(--primary);
+            color: white;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 25px;
+            width: 90%;
+            max-width: 1200px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 30px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: #333;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid #eee;
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 25px rgba(0,0,0,0.1);
+            border-color: var(--accent);
+        }
+
+        .card img {
+            width: 85px;
+            height: 85px;
+            margin-bottom: 20px;
+            object-fit: contain;
+        }
+
+        .card span {
+            font-weight: 700;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Botão Adicionar Flutuante */
+        #btn-add-trigger {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 28px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+            z-index: 10;
+        }
+
+        #btn-add-trigger:hover {
+            background: var(--accent);
+            transform: rotate(90deg);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 35px;
+            border-radius: 12px;
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .modal-content h3 { margin-top: 0; color: var(--primary); }
+
+        input {
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .btn-save {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 14px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .btn-close {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Sistemas WAP - Aury Costa</h1>
+        <p>Gerenciamento em Tempo Real</p>
+    </header>
+
+    <div class="container" id="app-grid">
+        </div>
+
+    <button id="btn-add-trigger" title="Adicionar Novo WAP" onclick="openModal()">+</button>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h3>Novo WAP</h3>
+            <input type="text" id="input-name" placeholder="Nome do Painel">
+            <input type="text" id="input-link" placeholder="Link (https://...)">
+            <input type="text" id="input-icon" placeholder="Link do Ícone (URL da imagem)">
+            <button class="btn-save" onclick="saveWap()">Cadastrar no Firebase</button>
+            <button class="btn-close" onclick="closeModal()">Cancelar</button>
+        </div>
+    </div>
+
+    <script>
+        // 1. CONFIGURAÇÃO DO SEU FIREBASE
+        const firebaseConfig = {
+            databaseURL: "https://painel-wap-default-rtdb.firebaseio.com/"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const wapsRef = database.ref('meus_waps');
+
+        // 2. WAPS PADRÃO (Caso o banco esteja vazio)
+        const initialWaps = [
+            { name: "Controle de Notas", link: "https://aury-costa.github.io/Controle-de-notas-pendentes/", icon: "https://cdn-icons-png.flaticon.com/512/10397/10397529.png" },
+            { name: "MGL / Quebra Diária", link: "https://aury-costa.github.io/MGL-regional/", icon: "https://cdn-icons-png.flaticon.com/512/4521/4521266.png" },
+            { name: "Inventário", link: "https://aury-costa.github.io/Inventario/", icon: "https://cdn-icons-png.flaticon.com/512/862/862837.png" },
+            { name: "Embalagens Inativas", link: "https://aury-costa.github.io/Embalagens-Inativas/", icon: "https://cdn-icons-png.flaticon.com/512/2514/2514540.png" }
+        ];
+
+        // 3. ESCUTAR MUDANÇAS EM TEMPO REAL
+        wapsRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            
+            if (!data) {
+                // Se o banco estiver vazio, ele cria os iniciais
+                setupInitialData();
+            } else {
+                render(data);
+            }
+        });
+
+        function setupInitialData() {
+            initialWaps.forEach(wap => {
+                wapsRef.push(wap);
+            });
+        }
+
+        function render(waps) {
+            const grid = document.getElementById('app-grid');
+            grid.innerHTML = '';
+            
+            Object.keys(waps).forEach(key => {
+                const wap = waps[key];
+                grid.innerHTML += `
+                    <a href="${wap.link}" class="card">
+                        <img src="${wap.icon}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1243/1243420.png'">
+                        <span>${wap.name}</span>
+                    </a>
+                `;
+            });
+        }
+
+        // 4. FUNÇÕES DE INTERAÇÃO
+        function saveWap() {
+            const name = document.getElementById('input-name').value;
+            const link = document.getElementById('input-link').value;
+            const icon = document.getElementById('input-icon').value;
+
+            if (name && link && icon) {
+                wapsRef.push({ name, link, icon })
+                .then(() => {
+                    closeModal();
+                    document.getElementById('input-name').value = '';
+                    document.getElementById('input-link').value = '';
+                    document.getElementById('input-icon').value = '';
+                });
+            } else {
+                alert("Por favor, preencha todos os campos.");
+            }
+        }
+
+        function openModal() { document.getElementById('modal').style.display = 'flex'; }
+        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+    </script>
+</body>
+</html>
